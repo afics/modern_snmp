@@ -1,7 +1,11 @@
 use super::{PrivKey, PRIV_KEY_LEN};
 use crate::{LocalizedKey, SecurityError, SecurityParams, SecurityResult, WithLocalizedKey};
-use aes::{block_cipher::generic_array::typenum::Unsigned, Aes128};
-use cfb_mode::stream_cipher::{InvalidKeyNonceLength, NewStreamCipher, StreamCipher};
+use aes::Aes128;
+use cfb_mode::cipher::errors::InvalidLength;
+use cfb_mode::cipher::NewCipher;
+use hmac::crypto_mac::generic_array::typenum::Unsigned;
+use aes::cipher::AsyncStreamCipher;
+
 use cfb_mode::Cfb;
 
 type Aes128Cfb = Cfb<Aes128>;
@@ -23,14 +27,14 @@ impl<'a, D> Aes128PrivKey<'a, D> {
         engine_boots: u32,
         engine_time: u32,
         salt: &[u8],
-    ) -> Result<Aes128Cfb, InvalidKeyNonceLength> {
-        let mut iv = Vec::with_capacity(<Aes128Cfb as NewStreamCipher>::NonceSize::to_usize());
+    ) -> Result<Aes128Cfb, InvalidLength> {
+        let mut iv = Vec::with_capacity(<Aes128Cfb as NewCipher>::NonceSize::to_usize());
         iv.extend_from_slice(&engine_boots.to_be_bytes());
         iv.extend_from_slice(&engine_time.to_be_bytes());
         iv.extend_from_slice(&salt);
 
         let key = self.localized_key.bytes();
-        Aes128Cfb::new_var(&key[..PRIV_KEY_LEN], &iv)
+        Aes128Cfb::new_from_slices(&key[..PRIV_KEY_LEN], &iv)
     }
 }
 
