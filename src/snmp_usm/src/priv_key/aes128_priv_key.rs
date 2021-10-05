@@ -1,10 +1,10 @@
 use super::{PrivKey, PRIV_KEY_LEN};
 use crate::{LocalizedKey, SecurityError, SecurityParams, SecurityResult, WithLocalizedKey};
+use aes::cipher::AsyncStreamCipher;
 use aes::Aes128;
 use cfb_mode::cipher::errors::InvalidLength;
 use cfb_mode::cipher::NewCipher;
 use hmac::crypto_mac::generic_array::typenum::Unsigned;
-use aes::cipher::AsyncStreamCipher;
 
 use cfb_mode::Cfb;
 
@@ -31,7 +31,7 @@ impl<'a, D> Aes128PrivKey<'a, D> {
         let mut iv = Vec::with_capacity(<Aes128Cfb as NewCipher>::NonceSize::to_usize());
         iv.extend_from_slice(&engine_boots.to_be_bytes());
         iv.extend_from_slice(&engine_time.to_be_bytes());
-        iv.extend_from_slice(&salt);
+        iv.extend_from_slice(salt);
 
         let key = self.localized_key.bytes();
         Aes128Cfb::new_from_slices(&key[..PRIV_KEY_LEN], &iv)
@@ -71,7 +71,7 @@ impl<'a, D> PrivKey for Aes128PrivKey<'a, D> {
             .cipher(
                 security_params.engine_boots(),
                 security_params.engine_time(),
-                &security_params.priv_params(),
+                security_params.priv_params(),
             )
             .map_err(|_| SecurityError::DecryptError)?;
         cipher.decrypt(&mut encrypted_scoped_pdu);
