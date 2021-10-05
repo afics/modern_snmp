@@ -32,7 +32,7 @@ impl<'a, D> DesPrivKey<'a, D> {
             .map(|(salt, pre_iv)| salt ^ pre_iv)
             .collect();
 
-        DesCbc::new_from_slices(&des_key, &iv)
+        DesCbc::new_from_slices(des_key, &iv)
     }
 
     fn add_padding_space(buf: &mut Vec<u8>) {
