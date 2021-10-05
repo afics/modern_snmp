@@ -12,4 +12,4 @@ categories = ["network-programming"]
 
 [dependencies]
 bitflags = "1.2.1"
-yasna = "0.3.2"
+yasna = "0.4.0"

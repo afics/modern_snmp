@@ -268,7 +268,7 @@ where
 
     // Calculates the HMAC of the SNMP message.
     fn hmac(&self, msg: &[u8]) -> Vec<u8> {
-        let mut mac = Hmac::<D>::new_varkey(self.localized_key.bytes()).unwrap();
+        let mut mac = Hmac::<D>::new_from_slice(self.localized_key.bytes()).unwrap();
 
         mac.update(msg);
         let result = mac.finalize();
