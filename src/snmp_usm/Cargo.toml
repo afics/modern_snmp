@@ -12,9 +12,9 @@ categories = ["network-programming"]
 
 [dependencies]
 aes = "0.8.2"
-block-modes = "0.5.0"
+block-modes = "0.8.1"
 cfb-mode = "0.8.2"
-des = "0.4.0"
+des = "0.7.0"
 hmac = "0.8.1"
 md-5 = "0.9.1"
 sha-1 = "0.9.1"

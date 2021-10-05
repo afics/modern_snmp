@@ -2,7 +2,7 @@ use super::{PrivKey, PRIV_KEY_LEN};
 use crate::{LocalizedKey, SecurityError, SecurityParams, SecurityResult, WithLocalizedKey};
 use block_modes::{block_padding::NoPadding, BlockMode, Cbc, InvalidKeyIvLength};
 use des::{
-    block_cipher::{generic_array::typenum::Unsigned, BlockCipher, NewBlockCipher},
+    cipher::{generic_array::typenum::Unsigned, BlockCipher, NewBlockCipher},
     Des,
 };
 
@@ -32,7 +32,7 @@ impl<'a, D> DesPrivKey<'a, D> {
             .map(|(salt, pre_iv)| salt ^ pre_iv)
             .collect();
 
-        DesCbc::new_var(des_key, &iv)
+        DesCbc::new_from_slices(&des_key, &iv)
     }
 
     fn add_padding_space(buf: &mut Vec<u8>) {
