@@ -31,3 +31,22 @@ where
 
     get_request
 }
+
+pub fn create_bulk_request_msg<I, D, P, S>(
+    var_binds_iter: I,
+    session: &mut Session<D, P, S>,
+) -> SnmpMsg
+where
+    I: IntoIterator<Item = VarBind>,
+{
+    let mut get_bulk_request = create_reportable_msg(session);
+    if let Some(scoped_pdu) = get_bulk_request.scoped_pdu_data.plaintext_mut() {
+        scoped_pdu
+            .set_pdu_type(PduType::GetBulkRequest)
+            .set_error_index(40) // TODO, FIXME: this corresponds to GetBulkRequest's "max-repetitions" field, not pretty
+            .set_var_binds(var_binds_iter);
+    }
+
+    get_bulk_request
+}
+
