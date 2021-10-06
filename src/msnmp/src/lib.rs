@@ -82,6 +82,9 @@ where
         Command::Walk { oid } => {
             request::snmp_walk(oid, &mut client, &mut session)?;
         }
+        Command::BulkWalk { oid } => {
+            request::snmp_bulkwalk(oid, &mut client, &mut session)?;
+        }
     }
 
     Ok(())

@@ -50,4 +50,9 @@ pub enum Command {
         #[structopt(name = "OID", help = "Optional object identifier")]
         oid: Option<String>,
     },
+    #[structopt(about = "Retrieves a subtree of management values using GETBULK")]
+    BulkWalk {
+        #[structopt(name = "OID", help = "Optional object identifier")]
+        oid: Option<String>,
+    },
 }

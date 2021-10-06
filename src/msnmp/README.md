@@ -8,6 +8,7 @@ Supported command types:
 * Get request
 * Get next request
 * SNMP walk
+* SNMP bulk walk
 
 ## License
 

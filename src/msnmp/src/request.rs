@@ -74,6 +74,48 @@ where
     }
 }
 
+pub fn snmp_bulkwalk<D, P, S>(
+    oid: Option<String>,
+    client: &mut Client,
+    session: &mut Session<D, P, S>,
+) -> Result<(), Error>
+where
+    D: Digest,
+    P: PrivKey<Salt = S>,
+    S: Step + Copy,
+{
+    let mut var_bind = strings_to_var_binds(oid.iter());
+    if oid.is_some() && var_bind.is_empty() {
+        eprintln!("invalid OID supplied, using default OID\n");
+    }
+
+    if var_bind.is_empty() {
+        let base_oid = ObjectIdent::from_slice(&MIB2_BASE_OID);
+        var_bind = vec![VarBind::new(base_oid)];
+    }
+
+    let end_oid = &next_sibling(var_bind[0].name());
+    loop {
+        let mut get_next_request =
+            msg_factory::create_bulk_request_msg(var_bind, session);
+
+        let get_next_response = client.send_request(&mut get_next_request, session)?;
+        match get_var_binds(&get_next_response) {
+            Some(binds) => {
+                for var in binds {
+                    if var.name() >= end_oid || var.value() == &VarValue::EndOfMibView {
+                        return Ok(());
+                    }
+
+                    println!("{}", format_var_bind::format_var_bind(var));
+                }
+                var_bind = vec![VarBind::new(binds.last().unwrap().name().clone())];
+            }
+            None => return Ok(()),
+        }
+    }
+}
+
 fn strings_to_var_binds<'a, I>(strings: I) -> Vec<VarBind>
 where
     I: Iterator<Item = &'a String>,
