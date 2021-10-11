@@ -43,9 +43,22 @@ impl Client {
         P: PrivKey<Salt = S>,
         S: Step + Copy,
     {
+        // keep a copy of the original message here, in case we need to retransmit; see rfc2574
+        // section 7a)
+        let mut original_msg = msg.clone();
+
         self.send_msg(msg, session)?;
-        let response_msg = self.recv_msg(msg.id(), session)?;
-        Ok(response_msg)
+        let response_msg = self.recv_msg(msg.id(), session);
+
+        match response_msg {
+            Ok(response_msg) => Ok(response_msg),
+            Err(error) => match error.kind() {
+                // recv_msg emits ConnectionReset in case a NotInTimeWindow Error has occured in a
+                // REPORT PDU with oid usmStatsNotInTimeWindow
+                ErrorKind::ConnectionReset => self.send_request(&mut original_msg, session),
+                _ => Err(error),
+            },
+        }
     }
 
     fn send_msg<D, P, S>(&self, msg: &mut SnmpMsg, session: &mut Session<D, P, S>) -> Result<usize>
@@ -119,14 +132,25 @@ impl Client {
                     return Err(error);
                 }
                 Ok(len) => {
+                    let mut usm_stats_not_in_time_window = false;
+
                     let encoded_msg = &mut self.buf[..len];
                     if let Some(auth_key) = session.auth_key() {
-                        auth_key.auth_in_msg(
+                        let auth = auth_key.auth_in_msg(
                             encoded_msg,
                             session.engine_id(),
                             session.engine_boots(),
                             session.engine_time(),
-                        )?;
+                        );
+                        match auth {
+                            Ok(_) => {}
+                            Err(error) => match error {
+                                snmp_usm::SecurityError::NotInTimeWindow => {
+                                    usm_stats_not_in_time_window = true; // rfc2574 handling
+                                }
+                                _ => auth?,
+                            },
+                        };
                     }
 
                     let mut msg = SnmpMsg::decode(encoded_msg)?;
@@ -144,9 +168,40 @@ impl Client {
                         })?;
                     }
 
+                    // handle rfc2574
+                    if usm_stats_not_in_time_window {
+                        let oid_usm_stats_not_in_time_window =
+                            snmp_mp::ObjectIdent::from_slice(&[1, 3, 6, 1, 6, 3, 15, 1, 1, 2, 0]);
+                        if msg
+                            .scoped_pdu_data
+                            .plaintext()
+                            .unwrap()
+                            .var_binds()
+                            .first()
+                            .unwrap()
+                            .name()
+                            .clone()
+                            != oid_usm_stats_not_in_time_window
+                        {
+                            return Err(std::io::Error::new(
+                                std::io::ErrorKind::InvalidData,
+                                snmp_usm::SecurityError::NotInTimeWindow,
+                            ));
+                        }
+                    }
+
                     session
                         .set_engine_boots(security_params.engine_boots())
                         .set_engine_time(security_params.engine_time());
+
+                    // rfc2574 requires a retransmit of the message, signal by emitting
+                    // ConnectionReset
+                    if usm_stats_not_in_time_window {
+                        return Err(std::io::Error::new(
+                            std::io::ErrorKind::ConnectionReset,
+                            snmp_usm::SecurityError::NotInTimeWindow,
+                        ));
+                    }
 
                     return Ok(msg);
                 }
