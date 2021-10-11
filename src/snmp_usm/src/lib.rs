@@ -86,7 +86,7 @@ mod error;
 mod localized_key;
 mod pos_finder;
 mod priv_key;
-mod security_params;
+pub mod security_params;
 
 pub use auth_key::{AuthKey, Digest};
 pub use error::SecurityError;

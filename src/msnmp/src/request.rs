@@ -4,7 +4,7 @@ use snmp_mp::{ObjectIdent, PduType, SnmpMsg, VarBind, VarValue};
 use snmp_usm::{Digest, PrivKey};
 use std::str::FromStr;
 
-const MIB2_BASE_OID: [u64; 6] = [1, 3, 6, 1, 2, 1];
+pub const MIB2_BASE_OID: [u64; 6] = [1, 3, 6, 1, 2, 1];
 
 pub fn snmp_get<D, P, S>(
     pdu_type: PduType,
@@ -96,8 +96,7 @@ where
 
     let end_oid = &next_sibling(var_bind[0].name());
     loop {
-        let mut get_next_request =
-            msg_factory::create_bulk_request_msg(var_bind, session);
+        let mut get_next_request = msg_factory::create_bulk_request_msg(var_bind, session);
 
         let get_next_response = client.send_request(&mut get_next_request, session)?;
         match get_var_binds(&get_next_response) {
@@ -116,7 +115,7 @@ where
     }
 }
 
-fn strings_to_var_binds<'a, I>(strings: I) -> Vec<VarBind>
+pub fn strings_to_var_binds<'a, I>(strings: I) -> Vec<VarBind>
 where
     I: Iterator<Item = &'a String>,
 {
@@ -127,15 +126,15 @@ where
         .collect()
 }
 
-fn get_var_binds(msg: &SnmpMsg) -> Option<&[VarBind]> {
+pub fn get_var_binds(msg: &SnmpMsg) -> Option<&[VarBind]> {
     Some(msg.scoped_pdu_data.plaintext()?.var_binds())
 }
 
-fn get_first_var_bind(msg: &SnmpMsg) -> Option<&VarBind> {
+pub fn get_first_var_bind(msg: &SnmpMsg) -> Option<&VarBind> {
     get_var_binds(msg)?.first()
 }
 
-fn next_sibling(oid: &ObjectIdent) -> ObjectIdent {
+pub fn next_sibling(oid: &ObjectIdent) -> ObjectIdent {
     let mut components = oid.components().to_vec();
     let len = components.len();
     components[len - 1] = components[len - 1].wrapping_add(1);
