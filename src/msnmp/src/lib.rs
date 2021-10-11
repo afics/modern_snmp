@@ -1,14 +1,14 @@
-mod client;
-mod format_var_bind;
-mod msg_factory;
-mod params;
-mod request;
-mod session;
+pub mod client;
+pub mod format_var_bind;
+pub mod msg_factory;
+pub mod params;
+pub mod request;
+pub mod session;
 
-use client::Client;
+pub use client::Client;
 use failure::Error;
 pub use params::{Command, Params};
-use session::{Session, Step};
+pub use session::{Session, Step};
 use snmp_mp::PduType;
 use snmp_usm::{
     Aes128PrivKey, AuthKey, DesPrivKey, Digest, LocalizedKey, Md5, PrivKey, Sha1, WithLocalizedKey,
@@ -17,7 +17,7 @@ use snmp_usm::{
 #[macro_use]
 extern crate failure;
 
-const SNMP_PORT_NUM: u32 = 161;
+pub const SNMP_PORT_NUM: u32 = 161;
 
 macro_rules! execute_request {
     ($digest:ty, $params:expr) => {{

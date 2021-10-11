@@ -49,4 +49,3 @@ where
 
     get_bulk_request
 }
-
