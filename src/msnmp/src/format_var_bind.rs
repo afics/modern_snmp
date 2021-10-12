@@ -12,7 +12,7 @@ pub fn format_var_bind(var_bind: &VarBind) -> String {
     )
 }
 
-fn format_var_value(var_value: &VarValue) -> String {
+pub fn format_var_value(var_value: &VarValue) -> String {
     match var_value {
         VarValue::Int(i) => format!("INTEGER: {}", i),
         VarValue::String(s) => format!("STRING: {:?}", String::from_utf8_lossy(s)),
