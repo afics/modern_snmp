@@ -19,10 +19,14 @@ pub struct Client {
 
 impl Client {
     // Constructs a new `Client` and connect it to the remote address using UDP.
-    pub fn new<A: ToSocketAddrs>(remote_addr: A) -> Result<Client> {
+    pub fn new<A: ToSocketAddrs>(remote_addr: A, timeout: Option<u64>) -> Result<Client> {
         let socket = UdpSocket::bind("0.0.0.0:0")?;
 
-        let timeout = Some(Duration::from_secs(TIMEOUT));
+        let timeout = match timeout {
+            Some(timeout) => Some(Duration::from_secs(timeout)),
+            None => Some(Duration::from_secs(TIMEOUT)),
+        };
+
         socket.set_read_timeout(timeout)?;
         socket.set_write_timeout(timeout)?;
         socket.connect(remote_addr)?;
