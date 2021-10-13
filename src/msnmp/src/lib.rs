@@ -57,7 +57,7 @@ where
         params.host
     };
 
-    let mut client = Client::new(host)?;
+    let mut client = Client::new(host, None)?;
     let mut session = Session::new(&mut client, params.user.as_bytes())?;
 
     if let Some(auth_passwd) = params.auth {
