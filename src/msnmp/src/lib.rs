@@ -5,17 +5,14 @@ pub mod params;
 pub mod request;
 pub mod session;
 
+use anyhow::Error;
 pub use client::Client;
-use failure::Error;
 pub use params::{Command, Params};
 pub use session::{Session, Step};
 use snmp_mp::PduType;
 use snmp_usm::{
     Aes128PrivKey, AuthKey, DesPrivKey, Digest, LocalizedKey, Md5, PrivKey, Sha1, WithLocalizedKey,
 };
-
-#[macro_use]
-extern crate failure;
 
 pub const SNMP_PORT_NUM: u32 = 161;
 
