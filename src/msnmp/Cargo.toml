@@ -11,8 +11,7 @@ keywords = ["snmp", "snmpv3" ]
 categories = ["command-line-utilities"]
 
 [dependencies]
-exitfailure = "0.5.1"
-failure = "0.1.8"
+anyhow = "1.0"
 rand = "0.8.4"
 snmp_mp = { path = "../snmp_mp" }
 snmp_usm = { path = "../snmp_usm" }

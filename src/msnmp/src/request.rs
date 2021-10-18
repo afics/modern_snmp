@@ -1,5 +1,5 @@
 use crate::{format_var_bind, msg_factory, Client, Session, Step};
-use failure::Error;
+use anyhow::{format_err, Error};
 use snmp_mp::{ObjectIdent, PduType, SnmpMsg, VarBind, VarValue};
 use snmp_usm::{Digest, PrivKey};
 use std::str::FromStr;
