@@ -3,9 +3,9 @@ use snmp_mp::{self, SnmpMsg};
 use snmp_usm::{Digest, PrivKey, SecurityParams};
 use std::{
     io::{Error, ErrorKind, Result},
-    net::{ToSocketAddrs, UdpSocket},
     time::Duration,
 };
+use tokio::net::{ToSocketAddrs, UdpSocket};
 
 const MAX_RETRIES: u32 = 2;
 // Timeout in seconds.
@@ -14,33 +14,36 @@ const TIMEOUT: u64 = 3;
 // Client to send and receive SNMP messages. Only supports IPv4.
 pub struct Client {
     socket: UdpSocket,
+    timeout: Duration,
     buf: [u8; SnmpMsg::MAX_UDP_PACKET_SIZE],
 }
 
 impl Client {
     // Constructs a new `Client` and connect it to the remote address using UDP.
-    pub fn new<A: ToSocketAddrs>(remote_addr: A, timeout: Option<u64>) -> Result<Client> {
-        let socket = UdpSocket::bind("0.0.0.0:0")?;
+    pub async fn new<A: ToSocketAddrs>(remote_addr: A, timeout: Option<u64>) -> Result<Client> {
+        let socket = UdpSocket::bind("0.0.0.0:0").await?;
 
         let timeout = match timeout {
-            Some(timeout) => Some(Duration::from_secs(timeout)),
-            None => Some(Duration::from_secs(TIMEOUT)),
+            Some(timeout) => Duration::from_secs(timeout),
+            None => Duration::from_secs(TIMEOUT),
         };
 
-        socket.set_read_timeout(timeout)?;
-        socket.set_write_timeout(timeout)?;
-        socket.connect(remote_addr)?;
+        socket.connect(remote_addr).await?;
 
         let buf = [0; SnmpMsg::MAX_UDP_PACKET_SIZE];
 
-        Ok(Self { socket, buf })
+        Ok(Self {
+            socket,
+            timeout,
+            buf,
+        })
     }
 
     // Sends a request and returns the response on success.
-    pub fn send_request<D, P, S>(
+    pub async fn send_request<D, P, S>(
         &mut self,
         msg: &mut SnmpMsg,
-        session: &mut Session<D, P, S>,
+        session: &mut Session<'_, D, P, S>,
     ) -> Result<SnmpMsg>
     where
         D: Digest,
@@ -51,21 +54,29 @@ impl Client {
         // section 7a)
         let mut original_msg = msg.clone();
 
-        self.send_msg(msg, session)?;
-        let response_msg = self.recv_msg(msg.id(), session);
+        self.send_msg(msg, session).await?;
+        let response_msg = self.recv_msg(msg.id(), session).await;
 
         match response_msg {
             Ok(response_msg) => Ok(response_msg),
             Err(error) => match error.kind() {
                 // recv_msg emits ConnectionReset in case a NotInTimeWindow Error has occured in a
-                // REPORT PDU with oid usmStatsNotInTimeWindow
-                ErrorKind::ConnectionReset => self.send_request(&mut original_msg, session),
+                // REPORT PDU with oid usmStatsNotInTimeWindow, resend the original message in this
+                // case
+                ErrorKind::ConnectionReset => {
+                    self.send_msg(&mut original_msg, session).await?;
+                    self.recv_msg(original_msg.id(), session).await
+                }
                 _ => Err(error),
             },
         }
     }
 
-    fn send_msg<D, P, S>(&self, msg: &mut SnmpMsg, session: &mut Session<D, P, S>) -> Result<usize>
+    async fn send_msg<D, P, S>(
+        &self,
+        msg: &mut SnmpMsg,
+        session: &mut Session<'_, D, P, S>,
+    ) -> Result<usize>
     where
         D: Digest,
         P: PrivKey<Salt = S>,
@@ -102,40 +113,36 @@ impl Client {
         }
 
         for _ in 0..MAX_RETRIES {
-            let result = self.socket.send(&encoded_msg);
-            if let Err(ref error) = result {
-                if error.kind() == ErrorKind::WouldBlock {
+            match tokio::time::timeout(self.timeout, self.socket.send(&encoded_msg)).await {
+                Ok(result) => return Ok(result?),
+                Err(_) => {
+                    // timeout has been reached
                     continue;
                 }
-            }
-
-            return result;
+            };
         }
 
         Err(Error::new(ErrorKind::TimedOut, "unable to send message"))
     }
 
-    fn recv_msg<D, P, S>(
+    async fn recv_msg<D, P, S>(
         &mut self,
         sent_msg_id: u32,
-        session: &mut Session<D, P, S>,
+        session: &mut Session<'_, D, P, S>,
     ) -> Result<SnmpMsg>
     where
         D: Digest,
         P: PrivKey,
     {
         for _ in 0..MAX_RETRIES {
-            let result = self.socket.recv(&mut self.buf);
-
-            match result {
-                Err(error) => {
-                    if error.kind() == ErrorKind::WouldBlock {
-                        continue;
-                    }
-
-                    return Err(error);
+            match tokio::time::timeout(self.timeout, self.socket.recv(&mut self.buf)).await {
+                Err(_) => {
+                    // timeout has been reached
+                    continue;
                 }
                 Ok(len) => {
+                    let len = len?; // return on other errors
+
                     let mut usm_stats_not_in_time_window = false;
 
                     let encoded_msg = &mut self.buf[..len];

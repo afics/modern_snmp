@@ -16,3 +16,4 @@ rand = "0.8.4"
 snmp_mp = { path = "../snmp_mp" }
 snmp_usm = { path = "../snmp_usm" }
 structopt = "0.3.17"
+tokio = { version = "1", features = ["full"] }

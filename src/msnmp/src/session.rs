@@ -130,23 +130,27 @@ where
     P: PrivKey<Salt = S>,
     S: Step + Copy,
 {
-    pub fn new(client: &mut Client, username: &[u8]) -> Result<Self> {
-        let mut rng = thread_rng();
+    pub async fn new(client: &mut Client, username: &[u8]) -> Result<Session<'a, D, P, S>> {
+        let mut session = {
+            let mut rng = thread_rng();
 
-        let mut session = Self {
-            username: Default::default(),
-            engine_id: Default::default(),
-            engine_boots: Default::default(),
-            engine_time: Default::default(),
-            msg_id: rng.gen_range(SnmpMsg::MSG_ID_MIN..=SnmpMsg::MSG_ID_MAX),
-            request_id: rng.gen_range(ScopedPdu::REQUEST_ID_MIN..=ScopedPdu::REQUEST_ID_MAX),
-            sync_time: Instant::now(),
-            auth_key: None,
-            priv_key: None,
+            Self {
+                username: Default::default(),
+                engine_id: Default::default(),
+                engine_boots: Default::default(),
+                engine_time: Default::default(),
+                msg_id: rng.gen_range(SnmpMsg::MSG_ID_MIN..=SnmpMsg::MSG_ID_MAX),
+                request_id: rng.gen_range(ScopedPdu::REQUEST_ID_MIN..=ScopedPdu::REQUEST_ID_MAX),
+                sync_time: Instant::now(),
+                auth_key: None,
+                priv_key: None,
+            }
         };
 
         let mut discovery_msg = msg_factory::create_reportable_msg(&mut session);
-        let discovery_response = client.send_request(&mut discovery_msg, &mut session)?;
+        let discovery_response = client
+            .send_request(&mut discovery_msg, &mut session)
+            .await?;
 
         let security_params = SecurityParams::decode(discovery_response.security_params())?;
         session

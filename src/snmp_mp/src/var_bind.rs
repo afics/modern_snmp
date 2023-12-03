@@ -379,7 +379,6 @@ impl VarValue {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;

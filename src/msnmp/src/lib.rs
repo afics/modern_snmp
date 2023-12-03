@@ -25,16 +25,18 @@ macro_rules! execute_request {
                 Aes128PrivKey<$digest>,
                 <Aes128PrivKey<$digest> as PrivKey>::Salt,
             >($params, salt)
+            .await
         } else {
             let salt = rand::random();
             execute_request::<$digest, DesPrivKey<$digest>, <DesPrivKey<$digest> as PrivKey>::Salt>(
                 $params, salt,
             )
+            .await
         }
     }};
 }
 
-pub fn run(params: Params) -> Result<(), Error> {
+pub async fn run(params: Params) -> Result<(), Error> {
     if Some(Params::SHA1_DIGEST) == params.auth_protocol.as_deref() {
         execute_request!(Sha1, params)
     } else {
@@ -42,7 +44,7 @@ pub fn run(params: Params) -> Result<(), Error> {
     }
 }
 
-fn execute_request<'a, D: 'a, P, S>(params: Params, salt: P::Salt) -> Result<(), Error>
+async fn execute_request<'a, D: 'a, P, S>(params: Params, salt: P::Salt) -> Result<(), Error>
 where
     D: Digest,
     P: PrivKey<Salt = S> + WithLocalizedKey<'a, D>,
@@ -54,8 +56,8 @@ where
         params.host
     };
 
-    let mut client = Client::new(host, None)?;
-    let mut session = Session::new(&mut client, params.user.as_bytes())?;
+    let mut client = Client::new(host, None).await?;
+    let mut session = Session::new(&mut client, params.user.as_bytes()).await?;
 
     if let Some(auth_passwd) = params.auth {
         let localized_key = LocalizedKey::<D>::new(auth_passwd.as_bytes(), session.engine_id());
@@ -71,16 +73,16 @@ where
 
     match params.cmd {
         Command::Get { oids } => {
-            request::snmp_get(PduType::GetRequest, oids, &mut client, &mut session)?;
+            request::snmp_get(PduType::GetRequest, oids, &mut client, &mut session).await?;
         }
         Command::GetNext { oids } => {
-            request::snmp_get(PduType::GetRequest, oids, &mut client, &mut session)?;
+            request::snmp_get(PduType::GetRequest, oids, &mut client, &mut session).await?;
         }
         Command::Walk { oid } => {
-            request::snmp_walk(oid, &mut client, &mut session)?;
+            request::snmp_walk(oid, &mut client, &mut session).await?;
         }
         Command::BulkWalk { oid } => {
-            request::snmp_bulkwalk(oid, &mut client, &mut session)?;
+            request::snmp_bulkwalk(oid, &mut client, &mut session).await?;
         }
     }
 

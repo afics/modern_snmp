@@ -6,11 +6,11 @@ use std::str::FromStr;
 
 pub const MIB2_BASE_OID: [u64; 6] = [1, 3, 6, 1, 2, 1];
 
-pub fn snmp_get<D, P, S>(
+pub async fn snmp_get<D, P, S>(
     pdu_type: PduType,
     oids: Vec<String>,
     client: &mut Client,
-    session: &mut Session<D, P, S>,
+    session: &mut Session<'_, D, P, S>,
 ) -> Result<(), Error>
 where
     D: Digest,
@@ -24,7 +24,7 @@ where
 
     let mut get_request = msg_factory::create_request_msg(pdu_type, var_binds, session);
 
-    let response = client.send_request(&mut get_request, session)?;
+    let response = client.send_request(&mut get_request, session).await?;
     if let Some(var_binds) = get_var_binds(&response) {
         for var_bind in var_binds {
             println!("{}", format_var_bind::format_var_bind(var_bind));
@@ -34,10 +34,10 @@ where
     Ok(())
 }
 
-pub fn snmp_walk<D, P, S>(
+pub async fn snmp_walk<D, P, S>(
     oid: Option<String>,
     client: &mut Client,
-    session: &mut Session<D, P, S>,
+    session: &mut Session<'_, D, P, S>,
 ) -> Result<(), Error>
 where
     D: Digest,
@@ -59,7 +59,7 @@ where
         let mut get_next_request =
             msg_factory::create_request_msg(PduType::GetNextRequest, var_bind, session);
 
-        let get_next_response = client.send_request(&mut get_next_request, session)?;
+        let get_next_response = client.send_request(&mut get_next_request, session).await?;
         match get_first_var_bind(&get_next_response) {
             Some(var) => {
                 if var.name() >= end_oid || var.value() == &VarValue::EndOfMibView {
@@ -74,10 +74,10 @@ where
     }
 }
 
-pub fn snmp_bulkwalk<D, P, S>(
+pub async fn snmp_bulkwalk<D, P, S>(
     oid: Option<String>,
     client: &mut Client,
-    session: &mut Session<D, P, S>,
+    session: &mut Session<'_, D, P, S>,
 ) -> Result<(), Error>
 where
     D: Digest,
@@ -98,7 +98,7 @@ where
     loop {
         let mut get_next_request = msg_factory::create_bulk_request_msg(var_bind, session);
 
-        let get_next_response = client.send_request(&mut get_next_request, session)?;
+        let get_next_response = client.send_request(&mut get_next_request, session).await?;
         match get_var_binds(&get_next_response) {
             Some(binds) => {
                 for var in binds {
