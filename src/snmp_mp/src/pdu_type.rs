@@ -15,7 +15,7 @@ const REPORT_TAG_NUM: u64 = 8;
 /// Represents a PDU type.
 ///
 /// PDU types are encoded as implicit tags.
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Default)]
+#[derive(Default, Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub enum PduType {
     #[default]
     GetRequest = GET_REQUEST_TAG_NUM as isize,

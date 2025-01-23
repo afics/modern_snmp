@@ -13,6 +13,7 @@ use std::marker::PhantomData;
 
 const ONE_MEGABYTE: usize = 1_048_576;
 const PASSWD_BUF_LEN: usize = 64;
+const AES_256_KEY_LEN: usize = 32;
 
 /// Localized key used to verify the identity of users, verify the integrity of messages and
 /// encrypt messages.
@@ -23,10 +24,15 @@ const PASSWD_BUF_LEN: usize = 64;
 pub struct LocalizedKey<'a, D> {
     bytes: Vec<u8>,
     _digest_type: PhantomData<&'a D>,
+    orig_len: usize,
 }
 
 impl<'a, D> LocalizedKey<'a, D> {
     pub(crate) fn bytes(&self) -> &[u8] {
+        &self.bytes[..self.orig_len]
+    }
+
+    pub(crate) fn bytes_full(&self) -> &[u8] {
         &self.bytes
     }
 }
@@ -51,11 +57,25 @@ where
     /// let key = LocalizedMd5Key::new(b"password", b"engine_id");
     /// ```
     pub fn new(passwd: &[u8], engine_id: &[u8]) -> Self {
-        let bytes = Self::key_from_passwd(passwd, engine_id);
+        let mut bytes = vec![];
+
+        let mut len = None;
+
+        while bytes.len() < AES_256_KEY_LEN {
+            let mut data =
+                Self::key_from_passwd(if bytes.is_empty() { passwd } else { &bytes }, engine_id);
+
+            if len.is_none() {
+                len = Some(data.len())
+            }
+
+            bytes.append(&mut data);
+        }
 
         Self {
             bytes,
             _digest_type: PhantomData,
+            orig_len: len.expect("No bytes generated"),
         }
     }
 
@@ -125,7 +145,7 @@ mod tests {
             0x52, 0x6f, 0x5e, 0xed, 0x9f, 0xcc, 0xe2, 0x6f, 0x89, 0x64, 0xc2, 0x93, 0x07, 0x87,
             0xd8, 0x2b,
         ];
-        assert_eq!(result.bytes, expected);
+        assert_eq!(result.bytes(), expected);
     }
 
     #[test]
@@ -137,7 +157,7 @@ mod tests {
             0x66, 0x95, 0xfe, 0xbc, 0x92, 0x88, 0xe3, 0x62, 0x82, 0x23, 0x5f, 0xc7, 0x15, 0x1f,
             0x12, 0x84, 0x97, 0xb3, 0x8f, 0x3f,
         ];
-        assert_eq!(result.bytes, expected);
+        assert_eq!(result.bytes(), expected);
     }
 
     #[test]

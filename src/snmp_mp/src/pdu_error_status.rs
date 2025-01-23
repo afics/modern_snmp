@@ -26,7 +26,7 @@ const INCONSISTENT_NAME: isize = 18;
 ///
 /// A non-zero value of the error-status field in a Response-PDU is used to indicate that an error
 /// occurred to prevent the processing of the request.
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Default)]
+#[derive(Default, Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub enum PduErrorStatus {
     #[default]
     NoError = NO_ERROR,

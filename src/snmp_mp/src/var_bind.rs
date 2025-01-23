@@ -189,7 +189,7 @@ impl VarBind {
 ///
 /// let var_value = VarValue::Int(1);
 /// ```
-#[derive(Clone, Debug, Eq, PartialEq, Hash, Default)]
+#[derive(Default, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum VarValue {
     /// The Integer32 type represents integer-valued information between -2^31 and 2^31-1 inclusive
     /// (-2_147_483_648 to 2_147_483_647 decimal).
@@ -378,7 +378,6 @@ impl VarValue {
         Ok(value)
     }
 }
-
 
 #[cfg(test)]
 mod tests {
